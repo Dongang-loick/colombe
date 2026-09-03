@@ -14,7 +14,7 @@
    ============================================================ */
 
 /* ====== À COMPLÉTER UNE FOIS (voir supabase-schema.sql pour la mise en place) ====== */
-var SUPABASE_URL = "https://mvywpaipicfcgpygtjzy.supabase.co/rest/v1/";        // ex: "https://xxxxxxxx.supabase.co"
+var SUPABASE_URL = "https://mvywpaipicfcgpygtjzy.supabase.co";        // ex: "https://xxxxxxxx.supabase.co"
 var SUPABASE_ANON_KEY = "sb_publishable_k2LjaPSGI1hwjTvyli5iDg_YuTNZsgn";   // clé publique "anon" (Project Settings → API)
 /* ==================================================================================== */
 
