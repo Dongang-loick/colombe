@@ -193,9 +193,15 @@
 
   // Récupère une URL de lecture directe pour l'aperçu au survol (sans passer par la modale).
   function resolvePreviewSrc(v, parsed) {
-    if (parsed.type === "file") return Promise.resolve(parsed.src);
+    if (parsed.type === "file") {
+      // Si l'URL n'a pas déjà de paramètre de temps, on ajoute #t=0.1
+      let src = parsed.src.includes("#t=") ? parsed.src : parsed.src + "#t=1";
+      return Promise.resolve(src);
+    }
     if (parsed.type === "indexeddb") {
-      return CC.getVideoBlob(parsed.id).then(function (blob) { return blob ? URL.createObjectURL(blob) : null; }).catch(function () { return null; });
+      return CC.getVideoBlob(parsed.id).then(function (blob) { 
+        return blob ? URL.createObjectURL(blob) + "#t=0.1" : null; 
+      }).catch(function () { return null; });
     }
     return Promise.resolve(null);
   }

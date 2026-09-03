@@ -4,10 +4,10 @@
    libellés). Le contenu ajouté depuis l'espace admin (présentation,
    photos, vidéos, témoignages) reste dans la langue où il a été saisi.
    ============================================================ */
-var CC_I18N = (function () {
+let CC_I18N = (function () {
   "use strict";
 
-  var DICT = {
+  let DICT = {
     fr: {
       nav_chorale: "La chorale", nav_galerie: "Galerie", nav_videos: "Vidéos",
       nav_temoignages: "Témoignages", nav_reserver: "Réserver", nav_contact: "Contacter l'aumônerie",
@@ -130,7 +130,7 @@ var CC_I18N = (function () {
     },
     es: {
       nav_chorale: "El coro", nav_galerie: "Galería", nav_videos: "Vídeos",
-      nav_temoignages: "Testimonios", nav_reserver: "Reservar", nav_contact: "Contactar con la capellanía",
+      nav_temoignages: "Testimonios", nav_reserver: "Reserlet", nav_contact: "Contactar con la capellanía",
       hero_eyebrow: "Capellanía protestante del cuerpo de ingenieros militares",
       hero_subtitle: "Un coro gospel que eleva voces y corazones, al servicio de los cultos y los momentos de comunión de la capellanía protestante del cuerpo de ingenieros militares.",
       hero_cta_listen: "Escuchar al coro", hero_cta_book: "Solicitar una actuación",
@@ -163,17 +163,17 @@ var CC_I18N = (function () {
       opt_concert: "Concierto / evento comunitario", opt_autre: "Otro",
       footer_tagline: "Coro de la capellanía protestante del cuerpo de ingenieros militares.",
       footer_nav_title: "Navegación", footer_contact_title: "Contacto",
-      footer_link_reserve: "Reservar al coro", footer_link_coords: "Datos de contacto de la capellanía",
+      footer_link_reserve: "Reserlet al coro", footer_link_coords: "Datos de contacto de la capellanía",
       footer_copyright_suffix: "Colombe céleste — Capellanía protestante del cuerpo de ingenieros militares.",
       like_label: "Me gusta", liked_label: "Te gusta",
       theme_toggle_dark: "Modo oscuro", theme_toggle_light: "Modo claro"
     }
   };
 
-  var LABELS = { fr: "Français", en: "English", de: "Deutsch", es: "Español" };
+  let LABELS = { fr: "Français", en: "English", de: "Deutsch", es: "Español" };
 
   function t(lang, key) {
-    var d = DICT[lang] || DICT.fr;
+    let d = DICT[lang] || DICT.fr;
     return d[key] || DICT.fr[key] || key;
   }
 

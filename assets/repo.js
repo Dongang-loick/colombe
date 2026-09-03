@@ -14,14 +14,14 @@
    ============================================================ */
 
 /* ====== À COMPLÉTER UNE FOIS (voir supabase-schema.sql pour la mise en place) ====== */
-var SUPABASE_URL = "https://mvywpaipicfcgpygtjzy.supabase.co";        // ex: "https://xxxxxxxx.supabase.co"
-var SUPABASE_ANON_KEY = "sb_publishable_k2LjaPSGI1hwjTvyli5iDg_YuTNZsgn";   // clé publique "anon" (Project Settings → API)
+let SUPABASE_URL = "https://mvywpaipicfcgpygtjzy.supabase.co";        // ex: "https://xxxxxxxx.supabase.co"
+let SUPABASE_ANON_KEY = "sb_publishable_k2LjaPSGI1hwjTvyli5iDg_YuTNZsgn";   // clé publique "anon" (Project Settings → API)
 /* ==================================================================================== */
 
-var CC_REPO = (function () {
+let CC_REPO = (function () {
   "use strict";
 
-  var SESSION_KEY = "colombeCelesteSbSession";
+  let SESSION_KEY = "colombeCelesteSbSession";
 
   function isRemote() { return !!(SUPABASE_URL && SUPABASE_ANON_KEY); }
 
@@ -54,7 +54,7 @@ var CC_REPO = (function () {
   }
 
   function authToken() {
-    var s = getSession();
+    let s = getSession();
     return (s && s.access_token) || SUPABASE_ANON_KEY;
   }
   function sbHeaders(needsWrite) {
@@ -105,7 +105,7 @@ var CC_REPO = (function () {
       sbGet("photos", "order=created_at.asc"), sbGet("videos", "order=created_at.asc"),
       sbGet("testimonials", "order=created_at.asc")
     ]).then(function (r) {
-      var s = r[0][0] || {}, a = r[1][0] || {};
+      let s = r[0][0] || {}, a = r[1][0] || {};
       return {
         settings: {
           responsable: s.responsable || "[Nom du responsable à compléter]",
@@ -134,7 +134,7 @@ var CC_REPO = (function () {
   /* ================= SETTINGS ================= */
   function saveSettings(patch) {
     if (!isRemote()) {
-      var data = CC.loadData();
+      let data = CC.loadData();
       Object.assign(data.settings, patch);
       return Promise.resolve(CC.saveData(data));
     }
@@ -147,7 +147,7 @@ var CC_REPO = (function () {
   /* ================= ABOUT ================= */
   function saveAboutText(patch) {
     if (!isRemote()) {
-      var data = CC.loadData();
+      let data = CC.loadData();
       Object.assign(data.about, patch);
       return Promise.resolve(CC.saveData(data));
     }
@@ -156,10 +156,10 @@ var CC_REPO = (function () {
   }
   function addAboutCard(card) {
     if (!isRemote()) {
-      var data = CC.loadData();
-      var item = { id: CC.uid(), title: card.title, description: card.description };
+      let data = CC.loadData();
+      let item = { id: CC.uid(), title: card.title, description: card.description };
       data.about.cards.push(item);
-      var r = CC.saveData(data); return Promise.resolve(r.ok ? { ok: true, item: item } : r);
+      let r = CC.saveData(data); return Promise.resolve(r.ok ? { ok: true, item: item } : r);
     }
     return sbInsert("about_cards", { title: card.title, description: card.description })
       .then(function (row) { return { ok: true, item: { id: row.id, title: row.title, description: row.description } }; })
@@ -167,8 +167,8 @@ var CC_REPO = (function () {
   }
   function updateAboutCard(id, patch) {
     if (!isRemote()) {
-      var data = CC.loadData();
-      var c = data.about.cards.find(function (x) { return x.id === id; });
+      let data = CC.loadData();
+      let c = data.about.cards.find(function (x) { return x.id === id; });
       if (c) Object.assign(c, patch);
       return Promise.resolve(CC.saveData(data));
     }
@@ -176,7 +176,7 @@ var CC_REPO = (function () {
   }
   function deleteAboutCard(id) {
     if (!isRemote()) {
-      var data = CC.loadData();
+      let data = CC.loadData();
       data.about.cards = data.about.cards.filter(function (x) { return x.id !== id; });
       return Promise.resolve(CC.saveData(data));
     }
@@ -185,20 +185,20 @@ var CC_REPO = (function () {
 
   /* ================= Générique pour photos / vidéos / témoignages (stockage local) ================= */
   function localAdd(listName, buildItem) {
-    var data = CC.loadData();
-    var item = buildItem();
+    let data = CC.loadData();
+    let item = buildItem();
     data[listName].push(item);
-    var r = CC.saveData(data);
+    let r = CC.saveData(data);
     return r.ok ? { ok: true, item: item } : r;
   }
   function localUpdate(listName, id, patch) {
-    var data = CC.loadData();
-    var it = data[listName].find(function (x) { return x.id === id; });
+    let data = CC.loadData();
+    let it = data[listName].find(function (x) { return x.id === id; });
     if (it) Object.assign(it, patch);
     return CC.saveData(data);
   }
   function localDelete(listName, id) {
-    var data = CC.loadData();
+    let data = CC.loadData();
     data[listName] = data[listName].filter(function (x) { return x.id !== id; });
     return CC.saveData(data);
   }
@@ -230,7 +230,7 @@ var CC_REPO = (function () {
   }
   function updateVideo(id, patch) {
     if (!isRemote()) return Promise.resolve(localUpdate("videos", id, patch));
-    var row = {};
+    let row = {};
     if ("url" in patch) row.url = patch.url;
     if ("title" in patch) row.title = patch.title;
     if ("desc" in patch) row.description = patch.desc;
@@ -285,8 +285,8 @@ var CC_REPO = (function () {
   }
   function toggleMessageDone(id, current) {
     if (!isRemote()) {
-      var list = CC.getMessages();
-      var m = list.find(function (x) { return x.id === id; });
+      let list = CC.getMessages();
+      let m = list.find(function (x) { return x.id === id; });
       if (m) m.done = !current;
       localStorage.setItem(CC.MSG_KEY, JSON.stringify(list));
       return Promise.resolve({ ok: true });

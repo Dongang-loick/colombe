@@ -3,16 +3,16 @@
    Utilisé par le site public (assets/site.js) ET l'admin (admin/admin.js)
    ============================================================ */
 
-var CC = (function () {
+let CC = (function () {
   "use strict";
 
-  var STORAGE_KEY = "colombeCelesteData_v2";
-  var MSG_KEY = "colombeCelesteMessages_v2";
-  var LIKES_KEY = "colombeCelesteLikes_v2";
-  var SESSION_KEY = "colombeCelesteAdminSession";
+  let STORAGE_KEY = "colombeCelesteData_v2";
+  let MSG_KEY = "colombeCelesteMessages_v2";
+  let LIKES_KEY = "colombeCelesteLikes_v2";
+  let SESSION_KEY = "colombeCelesteAdminSession";
 
   /* -------- Contenu par défaut (à modifier depuis l'espace admin) -------- */
-  var SEED_DATA = {
+  let SEED_DATA = {
     settings: {
       responsable: "[Nom du responsable à compléter]",
       phone: "[Numéro à compléter]",
@@ -49,9 +49,9 @@ var CC = (function () {
   /* -------- Stockage -------- */
   function loadData() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      let raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return clone(SEED_DATA);
-      var parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
       // fusion défensive : si une clé manque (mise à jour du site), on complète avec le seed
       return Object.assign(clone(SEED_DATA), parsed, {
         settings: Object.assign({}, SEED_DATA.settings, parsed.settings || {}),
@@ -64,7 +64,7 @@ var CC = (function () {
   }
 
   function saveData(data) {
-    var json;
+    let json;
     try {
       json = JSON.stringify(data);
     } catch (e) {
@@ -82,11 +82,11 @@ var CC = (function () {
   function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
   function uid() { return "id" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 
-  var THEME_KEY = "colombeCelesteTheme";
-  var LANG_KEY = "colombeCelesteLang";
+  let THEME_KEY = "colombeCelesteTheme";
+  let LANG_KEY = "colombeCelesteLang";
 
   function getTheme() {
-    var saved = localStorage.getItem(THEME_KEY);
+    let saved = localStorage.getItem(THEME_KEY);
     if (saved === "dark" || saved === "light") return saved;
     return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
   }
@@ -95,7 +95,7 @@ var CC = (function () {
   }
   function initTheme() { applyTheme(getTheme()); }
   function toggleTheme() {
-    var next = getTheme() === "dark" ? "light" : "dark";
+    let next = getTheme() === "dark" ? "light" : "dark";
     localStorage.setItem(THEME_KEY, next);
     applyTheme(next);
     return next;
@@ -135,10 +135,10 @@ var CC = (function () {
     if (/^data:video\//i.test(url)) return { type: "file", src: url };
     if (/\.(mp4|webm|ogv)(\?.*)?$/i.test(url)) return { type: "file", src: url };
 
-    var yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+    let yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
     if (yt) return { type: "iframe", src: "https://www.youtube-nocookie.com/embed/" + yt[1], autoThumb: "https://img.youtube.com/vi/" + yt[1] + "/hqdefault.jpg" };
 
-    var vim = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+    let vim = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
     if (vim) return { type: "iframe", src: "https://player.vimeo.com/video/" + vim[1] };
 
     if (/\/embed\//i.test(url)) return { type: "iframe", src: url };
@@ -158,10 +158,10 @@ var CC = (function () {
   function generateVideoThumbnail(file) {
     return new Promise(function (resolve) {
       try {
-        var video = document.createElement("video");
+        let video = document.createElement("video");
         video.muted = true; video.playsInline = true; video.preload = "metadata";
         video.src = URL.createObjectURL(file);
-        var done = false;
+        let done = false;
         function finish(dataUrl) {
           if (done) return;
           done = true;
@@ -173,7 +173,7 @@ var CC = (function () {
         });
         video.addEventListener("seeked", function () {
           try {
-            var canvas = document.createElement("canvas");
+            let canvas = document.createElement("canvas");
             canvas.width = video.videoWidth || 320;
             canvas.height = video.videoHeight || 180;
             canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -197,15 +197,15 @@ var CC = (function () {
   function uploadToCloudinary(file, resourceType, settings, onProgress) {
     return new Promise(function (resolve, reject) {
       if (!isCloudinaryConfigured(settings)) { reject(new Error("Cloudinary non configuré")); return; }
-      var xhr = new XMLHttpRequest();
-      var url = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(settings.cloudinaryCloud) + "/" + resourceType + "/upload";
+      let xhr = new XMLHttpRequest();
+      let url = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(settings.cloudinaryCloud) + "/" + resourceType + "/upload";
       xhr.open("POST", url, true);
       xhr.upload.onprogress = function (e) {
         if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
       };
       xhr.onload = function () {
         try {
-          var res = JSON.parse(xhr.responseText);
+          let res = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) {
             resolve({ url: res.secure_url, thumbnail: resourceType === "video" ? res.secure_url.replace(/\.[a-z0-9]+$/i, ".jpg") : res.secure_url });
           } else {
@@ -214,7 +214,7 @@ var CC = (function () {
         } catch (e) { reject(new Error("Réponse invalide du service d'hébergement.")); }
       };
       xhr.onerror = function () { reject(new Error("Échec réseau lors de l'envoi.")); };
-      var fd = new FormData();
+      let fd = new FormData();
       fd.append("file", file);
       fd.append("upload_preset", settings.cloudinaryPreset);
       xhr.send(fd);
@@ -222,15 +222,15 @@ var CC = (function () {
   }
 
   /* -------- Fichiers vidéo volumineux : stockés dans IndexedDB (capacité bien supérieure à localStorage) -------- */
-  var VIDEO_DB_NAME = "colombeCelesteVideos";
-  var VIDEO_STORE = "videoFiles";
+  let VIDEO_DB_NAME = "colombeCelesteVideos";
+  let VIDEO_STORE = "videoFiles";
 
   function openVideoDB() {
     return new Promise(function (resolve, reject) {
       if (!window.indexedDB) { reject(new Error("IndexedDB non disponible sur ce navigateur.")); return; }
-      var req = indexedDB.open(VIDEO_DB_NAME, 1);
+      let req = indexedDB.open(VIDEO_DB_NAME, 1);
       req.onupgradeneeded = function (e) {
-        var db = e.target.result;
+        let db = e.target.result;
         if (!db.objectStoreNames.contains(VIDEO_STORE)) db.createObjectStore(VIDEO_STORE);
       };
       req.onsuccess = function (e) { resolve(e.target.result); };
@@ -240,7 +240,7 @@ var CC = (function () {
   function storeVideoBlob(id, blob) {
     return openVideoDB().then(function (db) {
       return new Promise(function (resolve, reject) {
-        var tx = db.transaction(VIDEO_STORE, "readwrite");
+        let tx = db.transaction(VIDEO_STORE, "readwrite");
         tx.objectStore(VIDEO_STORE).put(blob, id);
         tx.oncomplete = function () { resolve(true); };
         tx.onerror = function (e) { reject(e.target.error || new Error("Échec de l'écriture")); };
@@ -250,8 +250,8 @@ var CC = (function () {
   function getVideoBlob(id) {
     return openVideoDB().then(function (db) {
       return new Promise(function (resolve, reject) {
-        var tx = db.transaction(VIDEO_STORE, "readonly");
-        var req = tx.objectStore(VIDEO_STORE).get(id);
+        let tx = db.transaction(VIDEO_STORE, "readonly");
+        let req = tx.objectStore(VIDEO_STORE).get(id);
         req.onsuccess = function () { resolve(req.result || null); };
         req.onerror = function (e) { reject(e.target.error || new Error("Échec de la lecture")); };
       });
@@ -260,7 +260,7 @@ var CC = (function () {
   function deleteVideoBlob(id) {
     return openVideoDB().then(function (db) {
       return new Promise(function (resolve) {
-        var tx = db.transaction(VIDEO_STORE, "readwrite");
+        let tx = db.transaction(VIDEO_STORE, "readwrite");
         tx.objectStore(VIDEO_STORE).delete(id);
         tx.oncomplete = function () { resolve(true); };
         tx.onerror = function () { resolve(false); };
@@ -270,7 +270,7 @@ var CC = (function () {
 
   /* -------- Messages (contact / réservation / témoignages) — sans jamais changer de page -------- */
   function saveMessage(entry) {
-    var list = [];
+    let list = [];
     try { list = JSON.parse(localStorage.getItem(MSG_KEY) || "[]"); } catch (e) { list = []; }
     entry.id = uid();
     entry.date = new Date().toISOString();
@@ -284,7 +284,7 @@ var CC = (function () {
   }
 
   function deleteMessage(id) {
-    var list = getMessages().filter(function (m) { return m.id !== id; });
+    let list = getMessages().filter(function (m) { return m.id !== id; });
     localStorage.setItem(MSG_KEY, JSON.stringify(list));
   }
 
@@ -293,7 +293,7 @@ var CC = (function () {
   function trySendToEndpoint(endpoint, payload) {
     if (!endpoint || !/^https:\/\//i.test(endpoint)) return;
     try {
-      var fd = new FormData();
+      let fd = new FormData();
       Object.keys(payload).forEach(function (k) { fd.append(k, payload[k]); });
       fetch(endpoint, { method: "POST", body: fd, headers: { Accept: "application/json" } }).catch(function () {});
     } catch (e) { /* silencieux : le message reste enregistré localement de toute façon */ }
