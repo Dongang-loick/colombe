@@ -17,6 +17,8 @@
     <svg class="mark" width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" stroke="#e7b24c" stroke-width="1.6"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="#e7b24c" stroke-width="1.6"/></svg>
     <h1>Espace administration</h1>
     <p>Colombe céleste — réservé au responsable de la chorale.</p>
+    <p id="admin-mode-notice" style="font-size:12.5px;color:rgba(251,248,241,.55);margin-top:-6px;"></p>
+    <input type="email" id="admin-email" placeholder="E-mail" autocomplete="username" style="display:none;">
     <input type="password" id="admin-pass" placeholder="Mot de passe" autocomplete="current-password">
     <button id="admin-login" type="button">Se connecter</button>
     <p class="form-msg err" id="admin-err" style="text-align:center;"></p>
@@ -90,7 +92,7 @@
 
         <div class="admin-card">
           <h2>Ajouter / modifier une photo</h2>
-          <div class="hint-box">Choisissez une image directement depuis votre appareil, ou collez le lien d'une image déjà en ligne.</div>
+          <div class="hint-box">Pour quelques photos : choisissez une image sur votre appareil (jusqu'à 2 Mo). <strong>Pour une grande galerie une fois le site en ligne</strong> : déposez vos photos dans le dossier <code>assets/photos/</code> de votre hébergement, puis collez ici leur chemin (ex : <code>assets/photos/concert-noel.jpg</code>) — ou utilisez un lien d'image déjà en ligne.</div>
           <div class="admin-add-form" id="photo-form">
             <div class="file-picker">
               <label class="fp-btn" for="ph-file">📁 Choisir une image sur mon appareil</label>
@@ -171,18 +173,38 @@
         <h1>Coordonnées</h1>
         <p class="lead">Ces informations apparaissent dans la section « Réserver » du site public.</p>
         <div class="admin-card">
-          <div class="admin-add-form">
-            <input type="text" id="s-name" placeholder="Nom du responsable">
-            <input type="tel" id="s-phone" placeholder="Téléphone">
-            <input type="email" id="s-email" placeholder="E-mail">
-            <input type="text" id="s-address" class="full" placeholder="Adresse du lieu de culte">
-            <input type="url" id="s-endpoint" class="full" placeholder="URL de réception des messages (optionnel — ex : Formspree)">
-            <div class="form-actions">
-              <button type="button" class="btn-save" id="s-save">Enregistrer les coordonnées</button>
-            </div>
+        <div class="admin-add-form">
+          <input type="text" id="s-name" placeholder="Nom du responsable">
+          <input type="tel" id="s-phone" placeholder="Téléphone">
+          <input type="email" id="s-email" placeholder="E-mail">
+          <input type="text" id="s-address" class="full" placeholder="Adresse du lieu de culte">
+          <input type="url" id="s-endpoint" class="full" placeholder="URL de réception des messages (optionnel — ex : Formspree)">
+          <div class="form-actions">
+            <button type="button" class="btn-save" id="s-save">Enregistrer les coordonnées</button>
           </div>
         </div>
-        <div class="hint-box">L'URL de réception est optionnelle : si vous créez un compte gratuit sur un service comme Formspree, collez ici le lien fourni pour recevoir les messages par e-mail en plus de leur enregistrement sur le site.</div>
+      </div>
+      <div class="hint-box">L'URL de réception est optionnelle : si vous créez un compte gratuit sur un service comme Formspree, collez ici le lien fourni pour recevoir les messages par e-mail en plus de leur enregistrement sur le site.</div>
+
+      <div class="admin-card">
+        <h2>Envoi automatique des photos et vidéos (Cloudinary)</h2>
+        <p class="sub">Une fois configuré, les photos et vidéos ajoutées depuis n'importe quel appareil sont envoyées automatiquement en arrière-plan et visibles par tous, sans limite liée au navigateur.</p>
+        <div class="hint-box">
+          <strong>Configuration en 4 étapes (gratuite, une seule fois) :</strong><br>
+          1. Créez un compte gratuit sur <strong>cloudinary.com</strong><br>
+          2. Sur votre tableau de bord, notez le <strong>"Cloud name"</strong><br>
+          3. Allez dans Settings → Upload → Upload presets → "Add upload preset", réglez le mode sur <strong>"Unsigned"</strong>, puis enregistrez et notez son nom<br>
+          4. Collez les deux valeurs ci-dessous
+        </div>
+        <div class="admin-add-form">
+          <input type="text" id="s-cloud-name" placeholder="Cloud name (ex : dxy1abcde)">
+          <input type="text" id="s-cloud-preset" placeholder="Upload preset non signé (ex : colombe_uploads)">
+          <div class="form-actions">
+            <button type="button" class="btn-save" id="s-cloud-save">Enregistrer la configuration</button>
+            <span id="cloud-status" style="font-size:13px;color:var(--ink-soft);"></span>
+          </div>
+        </div>
+      </div>
       </div>
 
     </main>
@@ -192,6 +214,7 @@
 <div class="save-toast" id="save-toast"></div>
 
 <script src="../assets/common.js"></script>
+<script src="../assets/repo.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

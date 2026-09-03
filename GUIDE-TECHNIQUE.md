@@ -1,117 +1,135 @@
 # Guide technique — Colombe céleste
 
-Ce document explique comment est construit le site et comment le modifier vous-même, sans connaissances techniques poussées.
+## 0. Le changement le plus important : une vraie base de données
+
+Jusqu'ici, tout le contenu du site (coordonnées, photos, vidéos, textes...) était stocké **dans le navigateur** de la personne qui l'ajoutait. Résultat : modifier le site sur Chrome n'était pas visible sur Edge, ni sur le téléphone d'un visiteur.
+
+**Ce n'est plus le cas.** Le site peut maintenant se connecter à **Supabase**, une vraie base de données en ligne. Une fois configuré (une seule fois), tout le contenu est stocké à un seul endroit et visible instantanément partout : n'importe quel navigateur, n'importe quel appareil.
+
+**Seules les préférences d'affichage restent locales à l'appareil**, comme demandé : le mode sombre et la langue choisie.
 
 ---
 
-## 1. Carte du projet
+## 1. Mise en place de Supabase (à faire une fois)
+
+### Étape 1 — Créer les tables
+1. Connectez-vous à votre compte Supabase, ouvrez votre projet
+2. Menu de gauche → **SQL Editor** → **New query**
+3. Ouvrez le fichier `supabase-schema.sql` fourni avec le site, copiez tout son contenu, collez-le, cliquez **Run**
+4. Ça crée toutes les tables, les données de départ, et les règles de sécurité
+
+### Étape 2 — Créer votre compte admin
+1. Menu de gauche → **Authentication** → **Users** → **Add user**
+2. Renseignez l'e-mail et le mot de passe que vous utiliserez pour vous connecter à l'admin du site
+3. **Ce sont ces identifiants qui remplacent l'ancien mot de passe unique**
+
+### Étape 3 — Connecter le site à votre base
+1. Toujours dans Supabase : **Project Settings** → **API**
+2. Copiez le **Project URL** et la clé **anon public**
+3. Ouvrez `assets/repo.js`, tout en haut, remplissez :
+   ```js
+   var SUPABASE_URL = "https://votre-projet.supabase.co";
+   var SUPABASE_ANON_KEY = "votre-clé-anon-ici";
+   ```
+4. Enregistrez, puis renvoyez ce fichier chez votre hébergeur
+
+C'est tout. Rechargez `/admin`, connectez-vous avec l'e-mail/mot de passe créés à l'étape 2 : vous êtes connecté à la vraie base de données.
+
+**Important sur la sécurité** : la clé "anon" n'est pas secrète — elle est faite pour être visible dans le code du site (c'est le fonctionnement normal de Supabase). Ce qui protège vraiment vos données, ce sont les règles de sécurité (RLS) définies dans `supabase-schema.sql` : tout le monde peut lire le contenu du site, mais seule une personne connectée avec le compte admin peut le modifier.
+
+---
+
+## 2. Photos et vidéos : envoi automatique (Cloudinary)
+
+Pour que les photos/vidéos ajoutées soient hébergées correctement (et pas seulement dans le navigateur), configurez aussi Cloudinary — gratuit, 4 étapes, expliquées directement dans l'onglet **Coordonnées** de l'admin. Une fois fait :
+- Choisir une photo/vidéo sur son PC ou son téléphone l'envoie **automatiquement** en ligne, invisible pour vous
+- Le lien obtenu est stocké dans Supabase, donc visible par tous, sur tous les appareils
+- Les vidéos obtiennent aussi une **vignette automatique** (image d'aperçu, plus d'écran noir)
+
+Sans Cloudinary configuré, le site continue de fonctionner (repli sur stockage navigateur, avec les limites déjà connues : 2 Mo/photo, propre à l'appareil).
+
+---
+
+## 3. Carte du projet (fichiers)
 
 ```
-index.html          → Page publique (structure)
-admin/index.html    → Page admin (structure), accessible via /admin
-assets/style.css    → Apparence du site public (couleurs, polices, mode sombre)
-admin/admin.css     → Apparence de l'admin
-assets/common.js    → Le "moteur" partagé : stockage, sécurité, vidéos
-assets/i18n.js      → Traductions (FR/EN/DE/ES)
-assets/site.js      → Comportement de la page publique
-admin/admin.js      → Comportement de l'admin (ajout/modification/suppression)
-assets/favicon.svg  → Icône du site
+index.html            → Page publique (structure)
+admin/index.html       → Page admin (structure), accessible via /admin
+assets/style.css       → Apparence du site public + mode sombre
+admin/admin.css        → Apparence de l'admin
+assets/common.js       → Fonctions de base : sécurité, vidéos, Cloudinary, IndexedDB
+assets/repo.js         → ⭐ Bascule Supabase ↔ stockage local (voir section 0)
+assets/i18n.js         → Traductions (FR/EN/DE/ES)
+assets/site.js         → Comportement de la page publique
+admin/admin.js         → Comportement de l'admin
+supabase-schema.sql    → Script à exécuter une fois dans Supabase
+assets/favicon.svg     → Icône du site
 robots.txt / sitemap.xml → Référencement (SEO)
 ```
 
-**Règle simple** : un texte fixe → modifiez le `.html`. Une couleur/taille/espacement → modifiez le `.css`. Un comportement (ce qui se passe quand on clique) → modifiez le `.js`.
+---
+
+## 4. Comment chaque élément est géré
+
+Le schéma est maintenant : **Admin (formulaire) → `assets/repo.js` → Supabase (ou stockage local si non configuré) → Site public**
+
+| Élément | Table Supabase | Géré dans (admin) | Affiché dans (site) |
+|---|---|---|---|
+| Coordonnées | `settings` | Onglet Coordonnées | `renderSettings()` |
+| Présentation + verset | `about` | Onglet Qui sommes-nous | `renderAbout()` |
+| Cartes de valeurs | `about_cards` | Onglet Qui sommes-nous | `renderAbout()` |
+| Photos | `photos` | Onglet Photos | `renderGallery()` |
+| Vidéos | `videos` | Onglet Vidéos | `renderVideos()` |
+| Témoignages | `testimonials` | Onglet Témoignages | `renderTestimonials()` |
+| Messages reçus | `messages` | Onglet Messages reçus | (formulaires publics) |
+
+Chaque action (ajouter/modifier/supprimer) dans l'admin appelle une fonction de `CC_REPO` (ex. `CC_REPO.addPhoto(...)`), qui elle-même décide d'écrire dans Supabase ou en local selon la configuration — le reste du code n'a pas à s'en soucier.
+
+### Vidéos : reconnaissance et vignettes
+- `CC.parseVideo()` dans `common.js` reconnaît YouTube, Vimeo, fichier direct, ou fichier local (IndexedDB)
+- Vignette YouTube : générée instantanément par une formule (`img.youtube.com/vi/ID/hqdefault.jpg`)
+- Vignette Vimeo : récupérée via leur API publique (`fetchVimeoThumbnail`)
+- Vignette d'un fichier importé : capturée automatiquement à partir de la vidéo elle-même (`generateVideoThumbnail`, dessine une image à partir de la 1ère seconde)
+
+### Aperçu au survol
+Pour les vidéos hébergées directement (Cloudinary ou fichier local), un survol de la souris lance un aperçu silencieux en boucle (`resolvePreviewSrc` + `hover-preview-video`). Pour les vidéos YouTube/Vimeo intégrées, ce n'est pas possible sans alourdir fortement la page (ça nécessiterait de charger leur lecteur complet) — seule la vignette réelle s'affiche.
+
+### Protection contre le téléchargement
+`preventCopy()` dans `site.js` désactive le clic droit et le glisser-déposer sur les images/vidéos, et `controlsList="nodownload"` retire le bouton de téléchargement des lecteurs vidéo. **Honnêteté technique** : aucune de ces protections n'empêche un visiteur déterminé (outils développeur, capture d'écran) — elles dissuadent l'usage courant, sans plus.
 
 ---
 
-## 2. Comment chaque élément du site est géré
+## 5. Variables importantes
 
-Pour chaque élément, le même schéma se répète :
-**Admin (formulaire) → stockage dans le navigateur → Site public (affichage)**
+Dans **`admin/admin.js`** :
+```js
+var ADMIN_PASSWORD = "colombe2026";            // repli si Supabase non configuré
+var MAX_IMAGE_BYTES = 2 * 1024 * 1024;         // image en stockage local : 2 Mo
+var MAX_IMAGE_BYTES_CLOUD = 10 * 1024 * 1024;  // image via Cloudinary : 10 Mo
+var MAX_VIDEO_BYTES = 20 * 1024 * 1024;        // vidéo en stockage local : 20 Mo
+var MAX_VIDEO_BYTES_CLOUD = 100 * 1024 * 1024; // vidéo via Cloudinary : 100 Mo
+```
 
-### Photos
-- **Où on les ajoute** : `admin/index.html`, onglet Photos → `admin/admin.js`, section `PHOTOS`
-- **Où elles sont stockées** : `localStorage`, dans `data.photos` (un tableau `{id, url, caption}`)
-- **Où elles s'affichent** : `assets/site.js`, fonction `renderGallery()`
-- **Taille max d'un fichier importé** : `MAX_IMAGE_BYTES` dans `admin/admin.js`
-
-### Vidéos
-- **Où on les ajoute** : onglet Vidéos → `admin/admin.js`, section `VIDEOS`
-- **Où elles sont stockées** : deux cas différents
-  - Un **lien YouTube/Vimeo** → juste le texte du lien dans `localStorage` (`data.videos`)
-  - Un **fichier importé** → le fichier lui-même va dans **IndexedDB** (un espace de stockage à part, avec beaucoup plus de capacité), et seule une petite référence (`indexeddb:xxxxx`) est gardée dans `data.videos`
-- **Où elles s'affichent** : `assets/site.js`, fonction `renderVideos()` + `openVideoModal()` (lecture en grand écran)
-- **Taille max d'un fichier importé** : `MAX_VIDEO_BYTES` dans `admin/admin.js`
-- **Reconnaissance du format** : fonction `parseVideo()` dans `assets/common.js` — c'est elle qui comprend qu'un lien est du YouTube, du Vimeo, ou un fichier
-
-### Témoignages
-- **Où on les ajoute** : onglet Témoignages → `admin/admin.js`, section `TEMOIGNAGES`
-- **Où ils sont stockés** : `localStorage`, `data.testimonials`
-- **Où ils s'affichent** : `assets/site.js`, fonction `renderTestimonials()`
-
-### « Qui sommes-nous » (présentation, verset, cartes de valeurs)
-- **Où on les modifie** : onglet Qui sommes-nous → `admin/admin.js`, sections `QUI SOMMES-NOUS`
-- **Où c'est stocké** : `localStorage`, `data.about` (`paragraph1`, `paragraph2`, `verseText`, `verseRef`, `cards`)
-- **Où ça s'affiche** : `assets/site.js`, fonction `renderAbout()`
-
-### Coordonnées de contact
-- **Où on les modifie** : onglet Coordonnées
-- **Où c'est stocké** : `data.settings` (`responsable`, `phone`, `email`, `address`, `messageEndpoint`)
-- **Où ça s'affiche** : `assets/site.js`, fonction `renderSettings()` — met aussi à jour automatiquement les données structurées SEO (`enhanceStructuredData()`)
-
-### Messages reçus (contact + réservation)
-- **Où ils arrivent** : formulaires de la page publique → `assets/site.js`, écouteurs sur `#booking-form` et `#testi-form`
-- **Où ils sont stockés** : `localStorage`, sous une clé séparée (`CC.MSG_KEY`), pas mélangés avec le reste du contenu
-- **Où on les lit** : onglet Messages reçus de l'admin → `renderMessages()` dans `admin/admin.js`
-- **Important** : ces messages ne sont visibles que sur l'appareil/navigateur où ils ont été envoyés, sauf si vous configurez un service comme Formspree dans le champ "URL de réception" (Coordonnées)
-
-### Mode sombre
-- Géré par `CC.getTheme()`, `CC.toggleTheme()` dans `assets/common.js`
-- Un attribut `data-theme="dark"` est posé sur la page, et `assets/style.css` contient les couleurs adaptées
-
-### Langue
-- Géré par `assets/i18n.js` (dictionnaire) + `CC_I18N.apply()`
-- Ne traduit que les textes fixes (menus, boutons) — pas le contenu que vous rédigez vous-même
+Dans **`assets/repo.js`** :
+```js
+var SUPABASE_URL = "";        // à remplir une fois (section 1)
+var SUPABASE_ANON_KEY = "";   // à remplir une fois (section 1)
+```
 
 ---
 
-## 3. Variables importantes — où et comment les changer
-
-Toutes dans **`admin/admin.js`**, tout en haut du fichier :
-
-```js
-var ADMIN_PASSWORD = "colombe2026";        // mot de passe de l'admin
-var MAX_IMAGE_BYTES = 2 * 1024 * 1024;     // taille max d'une image importée (2 Mo)
-var MAX_VIDEO_BYTES = 20 * 1024 * 1024;    // taille max d'une vidéo importée (20 Mo)
-```
-
-Pour changer une taille, changez uniquement le premier chiffre. Exemple, pour passer à 30 Mo :
-```js
-var MAX_VIDEO_BYTES = 30 * 1024 * 1024;
-```
-
-Un peu plus bas (fonction `updateStorageGauge`) :
-```js
-var approxLimitKB = 5000; // juste indicatif, pour la jauge visuelle de l'onglet admin
-```
-
-**Pourquoi deux limites différentes pour les vidéos ?**
-- Les **liens YouTube/Vimeo** n'ont aucune limite : ils ne sont jamais stockés sur votre site.
-- Les **fichiers importés directement** vont dans IndexedDB, qui accepte des dizaines, voire des centaines de Mo selon le navigateur — mais restent **propres à l'appareil** où ils ont été ajoutés tant que le site n'a pas de vrai serveur avec base de données. C'est très bien pour tester, mais **pour du contenu destiné au grand public, préférez toujours YouTube/Vimeo**.
-
----
-
-## 4. Autres réglages utiles
+## 6. Autres réglages utiles
 
 | Je veux... | Fichier | Où |
 |---|---|---|
 | Changer une couleur | `assets/style.css` | Variables tout en haut (`--dawn-gold`, `--sky-night`...) |
 | Changer un texte traduit | `assets/i18n.js` | Cherchez la clé dans les 4 blocs `fr`/`en`/`de`/`es` |
-| Changer la durée d'affichage d'un message de confirmation | `admin/admin.js` | Fonction `toast()` / `toastError()`, valeur en millisecondes (`2600`, `5500`) |
+| Changer la durée d'un message de confirmation | `admin/admin.js` | Fonctions `toast()` / `toastError()` |
 | Ajouter une 5e langue | `assets/i18n.js` | Dupliquez un bloc de langue, ajoutez son code dans `LABELS` |
 | Changer le nom de domaine (SEO) | `index.html`, `robots.txt`, `sitemap.xml` | Remplacez `https://www.colombe-celeste.example/` |
 
 ---
 
-## 5. En cas de doute
+## 7. En cas de doute
 
-Toujours procéder par petites étapes : modifiez une seule valeur, enregistrez, rechargez la page dans le navigateur pour vérifier que tout va bien, avant de passer à la suivante. Si quelque chose casse, comparez avec ce guide pour repérer ce qui a changé.
+Modifiez une seule chose à la fois, enregistrez, rechargez la page pour vérifier avant de continuer. Si l'admin affiche une erreur après une action, le message donne généralement la cause exacte (ex. "Session expirée ou droits insuffisants" → reconnectez-vous à l'admin).

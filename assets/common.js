@@ -18,7 +18,9 @@ var CC = (function () {
       phone: "[Numéro à compléter]",
       email: "[Adresse e-mail à compléter]",
       address: "[Adresse à compléter]",
-      messageEndpoint: ""
+      messageEndpoint: "",
+      cloudinaryCloud: "",
+      cloudinaryPreset: ""
     },
     about: {
       paragraph1: "La chorale Colombe céleste réunit des choristes de l'aumônerie protestante du génie militaire, animés par une même envie : chanter la foi avec ferveur et partager la joie de l'Évangile en musique, du negro spiritual au gospel contemporain.",
@@ -113,10 +115,15 @@ var CC = (function () {
       .replace(/'/g, "&#39;");
   }
 
-  // Valide qu'une URL est bien http(s), une data-uri image/vidéo, ou une référence IndexedDB interne
+  // Valide qu'une URL est bien http(s), une data-uri image/vidéo, une référence IndexedDB interne,
+  // ou un chemin relatif sûr vers un fichier hébergé dans le site lui-même (ex : assets/photos/concert.jpg)
   function isSafeUrl(url) {
     if (!url) return false;
-    return /^https:\/\//i.test(url) || /^http:\/\//i.test(url) || /^data:(image|video)\//i.test(url) || /^indexeddb:[a-z0-9]+$/i.test(url);
+    if (/^https:\/\//i.test(url) || /^http:\/\//i.test(url) || /^data:(image|video)\//i.test(url) || /^indexeddb:[a-z0-9]+$/i.test(url)) return true;
+    // Chemin relatif : uniquement lettres/chiffres/tirets/slashs, se terminant par une extension image/vidéo connue,
+    // sans ":" (bloque "javascript:" etc.) et sans "//" en tête (bloque les URL protocol-relative).
+    if (/^[a-z0-9._\-/]+\.(jpg|jpeg|png|gif|webp|svg|avif|mp4|webm|ogv)(\?[a-z0-9=&_-]*)?$/i.test(url) && url.indexOf("//") !== 0 && url.indexOf(":") === -1) return true;
+    return false;
   }
 
   /* -------- Vidéos : reconnaît YouTube / Vimeo / fichier direct et fabrique un lecteur qui fonctionne -------- */
@@ -129,7 +136,7 @@ var CC = (function () {
     if (/\.(mp4|webm|ogv)(\?.*)?$/i.test(url)) return { type: "file", src: url };
 
     var yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
-    if (yt) return { type: "iframe", src: "https://www.youtube-nocookie.com/embed/" + yt[1] };
+    if (yt) return { type: "iframe", src: "https://www.youtube-nocookie.com/embed/" + yt[1], autoThumb: "https://img.youtube.com/vi/" + yt[1] + "/hqdefault.jpg" };
 
     var vim = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
     if (vim) return { type: "iframe", src: "https://player.vimeo.com/video/" + vim[1] };
@@ -137,6 +144,81 @@ var CC = (function () {
     if (/\/embed\//i.test(url)) return { type: "iframe", src: url };
 
     return null; // format non reconnu : on ne l'affichera pas comme lecteur, pour éviter tout lien cassé
+  }
+
+  // Récupère la vignette d'une vidéo Vimeo via leur API publique oEmbed (pas de clé nécessaire).
+  function fetchVimeoThumbnail(url) {
+    return fetch("https://vimeo.com/api/oembed.json?url=" + encodeURIComponent(url))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) { return (data && data.thumbnail_url) ? data.thumbnail_url : null; })
+      .catch(function () { return null; });
+  }
+
+  // Génère une vignette (image fixe) à partir d'un fichier vidéo local, en capturant une image à 1 seconde.
+  function generateVideoThumbnail(file) {
+    return new Promise(function (resolve) {
+      try {
+        var video = document.createElement("video");
+        video.muted = true; video.playsInline = true; video.preload = "metadata";
+        video.src = URL.createObjectURL(file);
+        var done = false;
+        function finish(dataUrl) {
+          if (done) return;
+          done = true;
+          URL.revokeObjectURL(video.src);
+          resolve(dataUrl);
+        }
+        video.addEventListener("loadedmetadata", function () {
+          video.currentTime = Math.min(1, (video.duration || 2) / 2);
+        });
+        video.addEventListener("seeked", function () {
+          try {
+            var canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth || 320;
+            canvas.height = video.videoHeight || 180;
+            canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+            finish(canvas.toDataURL("image/jpeg", 0.7));
+          } catch (e) { finish(null); }
+        });
+        video.addEventListener("error", function () { finish(null); });
+        setTimeout(function () { finish(null); }, 6000); // sécurité : n'attend pas indéfiniment
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  /* -------- Envoi automatique vers Cloudinary (stockage cloud gratuit) --------
+     Rend l'ajout de photos/vidéos "invisible" pour l'admin : le fichier choisi sur son
+     appareil est envoyé en arrière-plan et remplacé par un lien public utilisable par tous,
+     sur n'importe quel appareil, sans dépendre du stockage du navigateur.
+     Configuration requise (une fois) : cloudName + uploadPreset non signé, dans les réglages admin. */
+  function isCloudinaryConfigured(settings) {
+    return !!(settings && settings.cloudinaryCloud && settings.cloudinaryPreset);
+  }
+  function uploadToCloudinary(file, resourceType, settings, onProgress) {
+    return new Promise(function (resolve, reject) {
+      if (!isCloudinaryConfigured(settings)) { reject(new Error("Cloudinary non configuré")); return; }
+      var xhr = new XMLHttpRequest();
+      var url = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(settings.cloudinaryCloud) + "/" + resourceType + "/upload";
+      xhr.open("POST", url, true);
+      xhr.upload.onprogress = function (e) {
+        if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = function () {
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) {
+            resolve({ url: res.secure_url, thumbnail: resourceType === "video" ? res.secure_url.replace(/\.[a-z0-9]+$/i, ".jpg") : res.secure_url });
+          } else {
+            reject(new Error((res.error && res.error.message) || "Échec de l'envoi (code " + xhr.status + ")"));
+          }
+        } catch (e) { reject(new Error("Réponse invalide du service d'hébergement.")); }
+      };
+      xhr.onerror = function () { reject(new Error("Échec réseau lors de l'envoi.")); };
+      var fd = new FormData();
+      fd.append("file", file);
+      fd.append("upload_preset", settings.cloudinaryPreset);
+      xhr.send(fd);
+    });
   }
 
   /* -------- Fichiers vidéo volumineux : stockés dans IndexedDB (capacité bien supérieure à localStorage) -------- */
@@ -226,6 +308,8 @@ var CC = (function () {
     trySendToEndpoint: trySendToEndpoint,
     getTheme: getTheme, applyTheme: applyTheme, initTheme: initTheme, toggleTheme: toggleTheme,
     getLang: getLang, setLang: setLang,
-    storeVideoBlob: storeVideoBlob, getVideoBlob: getVideoBlob, deleteVideoBlob: deleteVideoBlob
+    storeVideoBlob: storeVideoBlob, getVideoBlob: getVideoBlob, deleteVideoBlob: deleteVideoBlob,
+    isCloudinaryConfigured: isCloudinaryConfigured, uploadToCloudinary: uploadToCloudinary,
+    fetchVimeoThumbnail: fetchVimeoThumbnail, generateVideoThumbnail: generateVideoThumbnail
   };
 })();
